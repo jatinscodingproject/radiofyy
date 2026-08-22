@@ -82,7 +82,7 @@ export default function Navbar() {
         `${window.location.origin}/api/hutch/unsubscribe`,
         {
           number: mobile,
-          bundle_id: "1235",
+          bundle_id: "1307",
         }
       );
 

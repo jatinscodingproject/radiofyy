@@ -11,7 +11,7 @@ const MobilePage = () => {
   const [mobile, setMobile] = useState("");
   const [otp, setOtp] = useState("");
 
-  const BUNDLE_ID = 1235;
+  const BUNDLE_ID = 1307;
 
   const sendOtp = async () => {
     if (!mobile) {
