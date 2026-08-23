@@ -17,10 +17,6 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 
 
-// ======================================================
-// HOME PAGE
-// ======================================================
-
 function HomePage() {
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,11 +26,6 @@ function HomePage() {
 
   const isOtpFlow =
     location.pathname === "/otp-flow";
-
-
-  // ====================================================
-  // CHECK TOKEN
-  // ====================================================
 
   const getToken = () => {
     const authData = localStorage.getItem("authData");
@@ -73,21 +64,11 @@ function HomePage() {
 
   const isSubscribed = !!getToken();
 
-
-  // ====================================================
-  // TAP TO PLAY
-  // ====================================================
-
   const handlePlay = async () => {
 
     try {
 
       setLoading(true);
-
-
-      // ================================================
-      // ALREADY SUBSCRIBED
-      // ================================================
 
       if (isSubscribed) {
 
@@ -95,12 +76,6 @@ function HomePage() {
 
         return;
       }
-
-
-      // ================================================
-      // OTP FLOW
-      // /otp-flow
-      // ================================================
 
       if (isOtpFlow) {
 
@@ -115,11 +90,6 @@ function HomePage() {
         return;
       }
 
-
-      // ================================================
-      // NORMAL FLOW
-      // /
-      // ================================================
 
       localStorage.setItem(
         "subscriptionFlow",
@@ -151,39 +121,24 @@ function HomePage() {
       );
 
 
-      // ================================================
-      // NORMAL FLOW FALLBACK
-      // ================================================
-
       if (!isOtpFlow) {
 
         window.location.href =
           "http://consent.hutch.lk/register-service/XQ%3D%3DCg%3D%3Dcg%3D%3DAw%3D%3D";
 
       } else {
-
-        // ==============================================
-        // OTP FLOW FALLBACK
-        // ==============================================
-
         navigate("/subscribe");
       }
 
 
     } finally {
-
       setLoading(false);
-
     }
   };
-
 
   return (
 
     <div className="relative h-screen w-screen overflow-hidden bg-[#020617]">
-
-      {/* Background */}
-
       <div
         className="absolute inset-0"
         style={{
@@ -245,51 +200,22 @@ function HomePage() {
 }
 
 
-
-// ======================================================
-// APP LAYOUT
-// ======================================================
-
 function AppLayout() {
-
   const location = useLocation();
-
-
   const isCallbackPage =
     location.pathname === "/auth/callback";
-
-
   const isOtpFlow =
     location.pathname === "/otp-flow";
-
-
-  // ====================================================
-  // EXT REF
-  // ====================================================
-
   const params =
     new URLSearchParams(
       window.location.search
     );
-
   const extRef =
     params.get("ext_ref");
-
-
-  // ====================================================
-  // HUTCH DETECT USER
-  // ====================================================
-
   useEffect(() => {
-
-    // Only run detection for normal flow
-    // if that is what you want.
-
     if (isOtpFlow) {
       return;
     }
-
-
     axios
       .get(
         `${window.location.origin}/api/hutch/detect-user`,
@@ -314,11 +240,6 @@ function AppLayout() {
   return (
 
     <>
-
-      {/* =================================================
-          NAVBAR
-          ================================================= */}
-
       {!isCallbackPage && (
 
         isOtpFlow
@@ -328,15 +249,7 @@ function AppLayout() {
       )}
 
 
-      {/* =================================================
-          ROUTES
-          ================================================= */}
-
       <Routes>
-
-        {/* ==============================================
-            NORMAL FLOW
-            ============================================== */}
 
         <Route
           path="/"
@@ -345,15 +258,6 @@ function AppLayout() {
           }
         />
 
-
-        {/* ==============================================
-            OTP FLOW
-
-            Same HomePage
-            Different Navbar
-            Different subscription process
-            ============================================== */}
-
         <Route
           path="/otp-flow"
           element={
@@ -361,22 +265,12 @@ function AppLayout() {
           }
         />
 
-
-        {/* ==============================================
-            MOBILE / LOGIN / OTP PAGE
-            ============================================== */}
-
         <Route
           path="/subscribe"
           element={
             <MobilePage />
           }
         />
-
-
-        {/* ==============================================
-            AUTH CALLBACK
-            ============================================== */}
 
         <Route
           path="/auth/callback"
@@ -391,20 +285,10 @@ function AppLayout() {
   );
 }
 
-
-
-// ======================================================
-// APP
-// ======================================================
-
 export default function App() {
-
   return (
-
     <Router>
-
       <AppLayout />
-
     </Router>
 
   );

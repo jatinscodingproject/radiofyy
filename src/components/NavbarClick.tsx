@@ -9,9 +9,6 @@ const Navbar: React.FC = () => {
 
   const navigate = useNavigate();
 
-  // =========================
-  // CHECK TOKEN
-  // =========================
   const getToken = () => {
     const authData = localStorage.getItem("authData");
 
@@ -44,14 +41,11 @@ const Navbar: React.FC = () => {
   const token = getToken();
   const isSubscribed = !!token;
 
-  // =========================
-  // SUBSCRIBE
-  // =========================
+
   const handleSubscribe = async () => {
     try {
       setLoading(true);
 
-      // Go to your login/mobile page
       navigate("/subscribe");
 
     } catch (error) {
