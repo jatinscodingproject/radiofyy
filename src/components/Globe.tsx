@@ -82,7 +82,7 @@ export default function Globe3D() {
         `${window.location.origin}/api/hutch/status`,
         {
           number: mobile,
-          bundle_id: 1235,
+          bundle_id: 1307,
         },
         {
           headers: {
