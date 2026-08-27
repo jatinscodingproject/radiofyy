@@ -6,6 +6,7 @@ import {
 } from "react";
 import Globe from "react-globe.gl";
 import { X, Play } from "lucide-react";
+import axios from "axios";
 
 interface Country {
   geometry: any;
@@ -15,7 +16,8 @@ interface Country {
   };
 }
 
-
+const CONSENT_URL =
+  "http://consent.hutch.lk/register-service/XQ%3D%3DCw%3D%3DcQ%3D%3DAQ%3D%3D";
 
 export default function Globe3D() {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -23,51 +25,161 @@ export default function Globe3D() {
   const [showPanel, setShowPanel] = useState(false);
   const [stations, setStations] = useState<any[]>([]);
   const [currentStation, setCurrentStation] = useState<any>(null);
+  const [checking, setChecking] = useState(false);
+
   const globeRef = useRef<any>(null);
-  const playCountryRadio = useCallback(async (countryName: string) => {
-  try {
-    let data = radioCache.current[countryName];
-
-    if (!data) {
-      const response = await fetch(
-        `https://de1.api.radio-browser.info/json/stations/search?country=${encodeURIComponent(countryName)}&hidebroken=true&limit=20`
-      );
-
-      data = await response.json();
-
-      data.sort((a: any, b: any) => b.votes - a.votes);
-
-      radioCache.current[countryName] = data;
-    }
-
-    setStations(data);
-
-    const first = data.find(
-      (s: any) => s.url_resolved?.startsWith("http")
-    );
-
-    if (!first) return;
-
-    setCurrentStation(first);
-
-    if (audioRef.current) {
-      audioRef.current.src = first.url_resolved;
-      audioRef.current.play().catch(() => {});
-    }
-  } catch (err) {
-    console.error(err);
-  }
-}, []);
-
 
   const [countries, setCountries] = useState<Country[]>([]);
   const [selectedCountry, setSelectedCountry] = useState<Country | null>(null);
   const [hoverCountry, setHoverCountry] = useState<Country | null>(null);
+
   const [size, setSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight - 80,
   });
 
+  // ============================================
+  // GET TOKEN
+  // ============================================
+  const getToken = () => {
+    const authData = localStorage.getItem("authData");
+
+    if (!authData) return null;
+
+    try {
+      const parsed = JSON.parse(authData);
+
+      if (Date.now() > parsed.expiresAt) {
+        localStorage.removeItem("authData");
+        return null;
+      }
+
+      return parsed.token;
+    } catch (err) {
+      localStorage.removeItem("authData");
+      return null;
+    }
+  };
+
+  // ============================================
+  // CHECK HUTCH SUBSCRIPTION
+  // ============================================
+  const checkSubscription = async (): Promise<boolean> => {
+    const token = getToken();
+
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const mobile = localStorage.getItem("mobile");
+
+      if (!mobile) {
+        return false;
+      }
+
+      const response = await axios.post(
+        `${window.location.origin}/api/hutch/status`,
+        {
+          number: mobile,
+          bundle_id: 1235,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data.is_active === true;
+    } catch (error) {
+      console.error("Subscription check failed:", error);
+
+      return false;
+    }
+  };
+
+  // ============================================
+  // PLAY COUNTRY RADIO
+  // ============================================
+  const playCountryRadio = useCallback(
+    async (countryName: string) => {
+      try {
+        // ----------------------------------------
+        // CHECK SUBSCRIPTION BEFORE RADIO API
+        // ----------------------------------------
+        setChecking(true);
+
+        const isActive = await checkSubscription();
+
+        if (!isActive) {
+          localStorage.removeItem("authData");
+          localStorage.removeItem("mobile");
+
+          alert(
+            "Your subscription has expired. Please subscribe again."
+          );
+
+          window.location.href = CONSENT_URL;
+
+          return;
+        }
+
+        // ----------------------------------------
+        // USER IS SUBSCRIBED
+        // NOW CALL RADIO API
+        // ----------------------------------------
+
+        let data = radioCache.current[countryName];
+
+        if (!data) {
+          const response = await fetch(
+            `https://de1.api.radio-browser.info/json/stations/search?country=${encodeURIComponent(
+              countryName
+            )}&hidebroken=true&limit=20`
+          );
+
+          data = await response.json();
+
+          data.sort(
+            (a: any, b: any) => b.votes - a.votes
+          );
+
+          radioCache.current[countryName] = data;
+        }
+
+        setStations(data);
+
+        const first = data.find(
+          (s: any) =>
+            s.url_resolved?.startsWith("http")
+        );
+
+        if (!first) return;
+
+        setCurrentStation(first);
+
+        if (audioRef.current) {
+          audioRef.current.src = first.url_resolved;
+
+          audioRef.current
+            .play()
+            .catch((err) =>
+              console.error("Audio play failed:", err)
+            );
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setChecking(false);
+      }
+    },
+    []
+  );
+
+  // ============================================
+  // RESIZE
+  // ============================================
   useEffect(() => {
     const resize = () => {
       setSize({
@@ -80,44 +192,60 @@ export default function Globe3D() {
 
     window.addEventListener("resize", resize);
 
-    return () => window.removeEventListener("resize", resize);
-      }, []);
+    return () =>
+      window.removeEventListener("resize", resize);
+  }, []);
 
-    useEffect(() => {
-      fetch("/countries.geo.json")
-        .then((r) => r.json())
-        .then((d) => setCountries(d.features))
-        .catch(console.error);
-    }, []);
+  // ============================================
+  // LOAD COUNTRIES
+  // ============================================
+  useEffect(() => {
+    fetch("/countries.geo.json")
+      .then((r) => r.json())
+      .then((d) => setCountries(d.features))
+      .catch(console.error);
+  }, []);
 
-    useEffect(() => {
-      if (!globeRef.current) return;
+  // ============================================
+  // GLOBE CONTROLS
+  // ============================================
+  useEffect(() => {
+    if (!globeRef.current) return;
 
-      const controls = globeRef.current.controls();
+    const controls = globeRef.current.controls();
 
-      controls.autoRotate = false;
-      controls.autoRotateSpeed = 0;
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 0;
 
-      controls.enableRotate = true;
-      controls.enableZoom = true;
-      controls.enablePan = false;
+    controls.enableRotate = true;
+    controls.enableZoom = true;
+    controls.enablePan = false;
 
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.1;
-      globeRef.current.pointOfView(
-        {
-          lat: 20,
-          lng: 0,
-          altitude: 1.6,
-        },
-        1500
-      );
-    }, [countries]);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.1;
 
-    const flyToCountry = (country: any) => {
+    globeRef.current.pointOfView(
+      {
+        lat: 20,
+        lng: 0,
+        altitude: 1.6,
+      },
+      1500
+    );
+  }, [countries]);
+
+  // ============================================
+  // COUNTRY CLICK
+  // ============================================
+  const flyToCountry = async (country: Country) => {
     setSelectedCountry(country);
     setShowPanel(true);
-    playCountryRadio(country.properties.ADMIN);
+
+    // Subscription check happens inside here
+    await playCountryRadio(
+      country.properties.ADMIN
+    );
+
     try {
       const coords =
         country.geometry.type === "Polygon"
@@ -146,10 +274,19 @@ export default function Globe3D() {
     } catch (err) {
       console.error(err);
     }
-    };
+  };
 
   return (
     <div className="relative w-full h-full">
+
+      {/* Subscription Checking Overlay */}
+      {checking && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+          <div className="bg-zinc-900 px-6 py-4 rounded-xl text-white">
+            Checking subscription...
+          </div>
+        </div>
+      )}
 
       <Globe
         ref={globeRef}
@@ -162,6 +299,7 @@ export default function Globe3D() {
         atmosphereColor="#4ea5ff"
         atmosphereAltitude={0.25}
         polygonsData={countries}
+
         polygonAltitude={(d: any) =>
           d === selectedCountry
             ? 0.02
@@ -169,27 +307,42 @@ export default function Globe3D() {
             ? 0.01
             : 0
         }
+
         polygonCapColor={(d: any) => {
           if (d === selectedCountry) return "#2563eb";
           if (d === hoverCountry) return "#60a5fa";
+
           return "rgba(255,255,255,.15)";
         }}
-        polygonSideColor={() => "rgba(0,0,0,0)"}
+
+        polygonSideColor={() =>
+          "rgba(0,0,0,0)"
+        }
+
         polygonStrokeColor={() => "#ffffff"}
+
         onPolygonHover={(country: any) => {
           if (country !== hoverCountry) {
             setHoverCountry(country);
           }
-          document.body.style.cursor = country ? "pointer" : "default";
+
+          document.body.style.cursor =
+            country ? "pointer" : "default";
         }}
+
         onPolygonClick={(polygon) => {
           const country = polygon as Country;
 
-          console.log(country.properties.ADMIN);
+          console.log(
+            "Selected country:",
+            country.properties.ADMIN
+          );
+
           flyToCountry(country);
         }}
       />
-     {selectedCountry && showPanel && (
+
+      {selectedCountry && showPanel && (
         <div
           className="
             fixed
@@ -213,8 +366,8 @@ export default function Globe3D() {
             z-40
             flex
             flex-col
-          ">
-          {/* Header */}
+          "
+        >
           <div className="flex items-center justify-between border-b border-slate-700 p-4">
             <div>
               <h2 className="text-xl font-bold text-white">
@@ -236,7 +389,6 @@ export default function Globe3D() {
             </button>
           </div>
 
-          {/* Stations */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2">
             {stations.map((station: any) => (
               <button
@@ -245,12 +397,15 @@ export default function Globe3D() {
                   setCurrentStation(station);
 
                   if (audioRef.current) {
-                    audioRef.current.src = station.url_resolved;
+                    audioRef.current.src =
+                      station.url_resolved;
+
                     audioRef.current.play();
                   }
                 }}
                 className={`flex w-full items-center gap-3 rounded-xl p-3 transition ${
-                  currentStation?.stationuuid === station.stationuuid
+                  currentStation?.stationuuid ===
+                  station.stationuuid
                     ? "bg-blue-600"
                     : "bg-slate-800 hover:bg-slate-700"
                 }`}
@@ -271,6 +426,7 @@ export default function Globe3D() {
           </div>
         </div>
       )}
+
       <audio
         ref={audioRef}
         controls
@@ -284,7 +440,7 @@ export default function Globe3D() {
           md:right-auto
           md:w-96
           z-50
-          "
+        "
       />
     </div>
   );
