@@ -17,7 +17,7 @@ interface Country {
 }
 
 const CONSENT_URL =
-  "http://consent.hutch.lk/register-service/XQ%3D%3DCw%3D%3DcQ%3D%3DAQ%3D%3D";
+  "http://consent.hutch.lk/register-service/XQ%3D%3DCg%3D%3Dcg%3D%3DAw%3D%3D";
 
 export default function Globe3D() {
   const audioRef = useRef<HTMLAudioElement>(null);
