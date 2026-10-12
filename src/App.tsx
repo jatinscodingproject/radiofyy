@@ -15,6 +15,7 @@ import Globe from "./components/Globe";
 import { Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import TermsAndConditions from "./components/terms";
 
 
 function HomePage() {
@@ -188,11 +189,8 @@ function HomePage() {
       ) : (
 
         <main className="absolute inset-0 pt-20">
-
           <Globe />
-
         </main>
-
       )}
 
     </div>
@@ -271,6 +269,11 @@ function AppLayout() {
             <MobilePage />
           }
         />
+
+      <Route
+        path="/terms"
+        element={<TermsAndConditions/>}
+      />
 
         <Route
           path="/auth/callback"

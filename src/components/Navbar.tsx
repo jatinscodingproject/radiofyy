@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Globe2, Menu, X } from "lucide-react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 
 export default function Navbar() {
@@ -9,15 +10,12 @@ export default function Navbar() {
   const getToken = () => {
     const authData = localStorage.getItem("authData");
 
-    if (!authData) {
-      return null;
-    }
+    if (!authData) return null;
 
     try {
       const parsed = JSON.parse(authData);
 
-      // Token expired
-      if (Date.now() > parsed.expiresAt) {
+      if (!parsed.token || !parsed.expiresAt || Date.now() > parsed.expiresAt) {
         localStorage.removeItem("authData");
         return null;
       }
@@ -25,7 +23,6 @@ export default function Navbar() {
       return parsed.token;
     } catch (error) {
       console.error("Invalid authData:", error);
-
       localStorage.removeItem("authData");
       return null;
     }
@@ -34,10 +31,11 @@ export default function Navbar() {
   const token = getToken();
   const isSubscribed = !!token;
 
-  // =========================
   // SUBSCRIBE
-  // =========================
   const handleSubscribe = async () => {
+    const consentUrl =
+      "http://consent.hutch.lk/register-service/XQ%3D%3DCg%3D%3Dcg%3D%3DAw%3D%3D";
+
     try {
       setLoading(true);
 
@@ -50,23 +48,16 @@ export default function Navbar() {
         }
       );
 
-      // Redirect to Hutch consent page
-      window.location.href =
-        "http://consent.hutch.lk/register-service/XQ%3D%3DCg%3D%3Dcg%3D%3DAw%3D%3D";
+      window.location.href = consentUrl;
     } catch (error) {
       console.error("Subscription error:", error);
-
-      // Even if detection fails, send user to consent page
-      window.location.href =
-        "http://consent.hutch.lk/register-service/XQ%3D%3DCg%3D%3Dcg%3D%3DAw%3D%3D";
+      window.location.href = consentUrl;
     } finally {
       setLoading(false);
     }
   };
 
-  // =========================
   // UNSUBSCRIBE
-  // =========================
   const handleLogout = async () => {
     try {
       setLoading(true);
@@ -86,18 +77,13 @@ export default function Navbar() {
         }
       );
 
-      // Clear authentication
       localStorage.removeItem("authData");
       localStorage.removeItem("mobile");
 
       alert("You have successfully unsubscribed.");
-
-      // Reload the current page
-      // Navbar will now show Subscribe
       window.location.href = "/";
     } catch (error) {
       console.error("Unsubscribe Error:", error);
-
       alert("Failed to unsubscribe. Please try again.");
     } finally {
       setLoading(false);
@@ -107,12 +93,14 @@ export default function Navbar() {
   return (
     <nav className="absolute top-3 left-3 right-3 z-50">
       <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl">
-
         {/* Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <Link
+            to="/"
+            className="flex items-center gap-3"
+            onClick={() => setMenuOpen(false)}
+          >
             <div className="rounded-xl bg-blue-600 p-2 sm:p-3">
               <Globe2 className="h-5 w-5 text-white sm:h-6 sm:w-6" />
             </div>
@@ -120,24 +108,18 @@ export default function Navbar() {
             <h1 className="text-lg font-bold text-white sm:text-xl lg:text-2xl">
               RadioFyy
             </h1>
-          </div>
+          </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8 text-sm lg:text-base text-gray-300">
-
-            <button
-              className="transition hover:text-white"
-            >
+          <div className="hidden items-center gap-6 text-sm text-gray-300 md:flex lg:gap-8 lg:text-base">
+            <Link to="/" className="transition hover:text-white">
               Home
-            </button>
+            </Link>
 
-            <button
-              className="transition hover:text-white"
-            >
-              Terms & Conditions
-            </button>
+            <Link to="/terms" className="transition hover:text-white">
+              Terms &amp; Conditions
+            </Link>
 
-            {/* Subscribe / Unsubscribe */}
             {!isSubscribed ? (
               <button
                 onClick={handleSubscribe}
@@ -155,12 +137,13 @@ export default function Navbar() {
                 {loading ? "Processing..." : "Unsubscribe"}
               </button>
             )}
-
           </div>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
             className="rounded-lg p-2 text-white transition hover:bg-white/10 md:hidden"
           >
             {menuOpen ? (
@@ -174,22 +157,22 @@ export default function Navbar() {
         {/* Mobile Menu */}
         {menuOpen && (
           <div className="border-t border-white/10 md:hidden">
-
-            <button
-              className="block w-full px-6 py-4 text-left text-white hover:bg-white/10"
+            <Link
+              to="/"
               onClick={() => setMenuOpen(false)}
+              className="block w-full px-6 py-4 text-white hover:bg-white/10"
             >
               Home
-            </button>
+            </Link>
 
-            <button
-              className="block w-full px-6 py-4 text-left text-white hover:bg-white/10"
+            <Link
+              to="/terms"
               onClick={() => setMenuOpen(false)}
+              className="block w-full px-6 py-4 text-white hover:bg-white/10"
             >
-              Terms & Conditions
-            </button>
+              Terms &amp; Conditions
+            </Link>
 
-            {/* Mobile Subscribe / Unsubscribe */}
             {!isSubscribed ? (
               <button
                 onClick={() => {
@@ -213,7 +196,6 @@ export default function Navbar() {
                 {loading ? "Processing..." : "Unsubscribe"}
               </button>
             )}
-
           </div>
         )}
       </div>
